@@ -30,6 +30,12 @@ pub mod pallet {
 	}
 
 	#[pallet::error]
+	pub enum Error<T> {
+		ProofAlreadyClaimed,
+		NoSuchProof,
+		NotProofOwner,
+	}
+	
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	#[pallet::generate_storage_info]
