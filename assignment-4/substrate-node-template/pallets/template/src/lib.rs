@@ -18,7 +18,17 @@ pub mod pallet {
 	use sp_std::vec::Vec;
 
 	#[pallet::config]
+	pub trait Config: frame_system::Config {
+		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+	}
+
 	#[pallet::event]
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	pub enum Event<T: Config> {
+		ClaimCreated(T::AccountId, Vec<u8>),
+		ClaimRevoked(T::AccountId, Vec<u8>)
+	}
+
 	#[pallet::error]
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
