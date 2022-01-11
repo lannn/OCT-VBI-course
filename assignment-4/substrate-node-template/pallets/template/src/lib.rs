@@ -2,15 +2,6 @@
 
 pub use pallet::*;
 
-#[cfg(test)]
-mod mock;
-
-#[cfg(test)]
-mod tests;
-
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
-
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
@@ -38,7 +29,6 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
-	#[pallet::generate_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
@@ -47,4 +37,37 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 	#[pallet::call]
+	impl<T: Config> Pallet<T> {
+		#[pallet::weight(1_000)]
+		pub fn create_claim(origin: OriginFor<T>, proof: Vec<u8>) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+			ensure!(!Proofs::<T>::contains_key(&proof), Error::<T>::ProofAlreadyClaimed);
+
+			let current_block = <frame_system::Pallet<T>>::block_number();
+
+			Proofs::<T>::insert(&proof, (&sender, current_block));
+
+			Self::deposit_event(Event::ClaimCreated(sender, proof));
+			
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn revoke_claim(origin: OriginFor<T>, proof: Vec<u8>) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+			ensure!(Proofs::<T>::contains_key(&proof), Error::<T>::NoSuchProof);
+
+			let (owner, _) = Proofs::<T>::get(&proof);
+
+			ensure!(sender == owner, Error::<T>::NotProofOwner);
+
+			Proofs::<T>::remove(&proof);
+
+			Self::deposit_event(Event::ClaimRevoked(sender, proof));
+
+			Ok(())
+		}
+	}
 }
