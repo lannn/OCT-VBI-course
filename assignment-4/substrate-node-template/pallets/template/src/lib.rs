@@ -22,7 +22,8 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		ClaimCreated(T::AccountId, Tweet),
-		ClaimRevoked(T::AccountId, Tweet)
+		ClaimRevoked(T::AccountId, Tweet),
+		Tranferred(T::AccountId, T::AccountId, Tweet),
 	}
 
 	#[pallet::error]
@@ -71,6 +72,26 @@ pub mod pallet {
 			Proofs::<T>::remove(&proof);
 
 			Self::deposit_event(Event::ClaimRevoked(sender, proof));
+
+			Ok(())
+		}
+
+		#[pallet::weight(1_000)]
+		pub fn tranfer(origin: OriginFor<T>, to: T::AccountId, proof: Tweet) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Proofs::<T>::contains_key(&proof), Error::<T>::NoSuchProof);
+			
+			let (owner, _) = Proofs::<T>::get(&proof);
+			ensure!(sender == owner, Error::<T>::NotProofOwner);
+			
+			let current_block = <frame_system::Pallet<T>>::block_number();
+			ensure!(!Proofs::<T>::contains_key(&proof), Error::<T>::ProofAlreadyClaimed);
+
+			// tranfer
+			Proofs::<T>::remove(&proof);
+			Proofs::<T>::insert(&proof, (&to, current_block));
+
+			Self::deposit_event(Event::Tranferred(sender, to, proof));
 
 			Ok(())
 		}
